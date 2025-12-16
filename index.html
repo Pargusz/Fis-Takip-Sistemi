@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ortak Fiş Takip Sistemi</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+    
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f4f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .container {
+            background-color: #fff;
+            width: 100%;
+            max-width: 800px;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            position: relative;
+            border: 2px solid #5a4b81;
+        }
+
+        /* Form Alanı */
+        .input-group {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .input-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 220px;
+        }
+
+        label {
+            font-size: 16px;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        input {
+            background-color: #999;
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 30px;
+            font-size: 16px;
+            outline: none;
+            text-align: center;
+            width: 100%;
+            box-sizing: border-box;
+            transition: 0.3s;
+        }
+
+        input::placeholder { color: #ddd; }
+        input:focus { background-color: #777; }
+
+        .btn-submit {
+            display: block;
+            margin: 20px auto 40px auto;
+            background-color: #5a4b81;
+            color: white;
+            padding: 15px 50px;
+            border: none;
+            border-radius: 30px;
+            font-size: 18px;
+            cursor: pointer;
+            width: 100%;
+            max-width: 300px;
+            transition: transform 0.1s;
+        }
+
+        .btn-submit:active { transform: scale(0.98); }
+
+        /* Liste Alanı */
+        .bottom-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-top: 20px;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .list-area {
+            flex: 1;
+            min-width: 300px;
+        }
+
+        #fisListesi {
+            list-style: none;
+            padding: 0;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .fis-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-bottom: 2px solid #eee;
+            background-color: #fff;
+        }
+
+        .fis-info {
+            font-size: 15px;
+            color: #c0392b;
+            font-weight: bold;
+            font-family: 'Comic Sans MS', cursive, sans-serif;
+            margin-right: 10px;
+            word-break: break-word;
+        }
+
+        /* Sağ Taraf Kontrolleri */
+        .actions {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .custom-checkbox {
+            width: 25px;
+            height: 25px;
+            cursor: pointer;
+            accent-color: #27ae60;
+        }
+
+        .btn-delete {
+            background: none;
+            border: none;
+            color: #e74c3c;
+            font-size: 20px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .btn-delete:hover { color: #c0392b; transform: scale(1.1); }
+
+        .btn-excel {
+            background-color: #27ae60;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 16px;
+            white-space: nowrap;
+        }
+
+        /* Mobil Uyumluluk */
+        @media (max-width: 768px) {
+            .container { padding: 20px; margin-top: 20px; }
+            .input-group { flex-direction: column; align-items: center; }
+            .input-wrapper { max-width: 100%; }
+            .bottom-section { flex-direction: column; align-items: stretch; }
+            .btn-excel { width: 100%; margin-top: 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    
+    <div class="input-group">
+        <div class="input-wrapper">
+            <label>kurum adı</label>
+            <input type="text" id="kurumAdi" placeholder="Örn: Market">
+        </div>
+        <div class="input-wrapper">
+            <label>ödenen ücret</label>
+            <input type="number" id="ucret" placeholder="TL">
+        </div>
+    </div>
+
+    <div class="input-wrapper" style="margin: 0 auto;">
+        <label>tarih</label>
+        <input type="date" id="tarih">
+    </div>
+
+    <button class="btn-submit" id="ekleBtn">Listeye Kaydet</button>
+
+    <div class="bottom-section">
+        <div class="list-area">
+            <h2>Tüm Fişler:</h2>
+            <ul id="fisListesi">
+                <li style="text-align:center; color:#999;">Veriler yükleniyor...</li>
+            </ul>
+        </div>
+        <button class="btn-excel" onclick="excelIndir()">Seçilenleri Excel İndir</button>
+    </div>
+</div>
+
+<script type="module">
+    // Web uyumlu importlar
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+    // SENİN GÖNDERDİĞİN CONFİG BİLGİLERİ
+    const firebaseConfig = {
+        apiKey: "AIzaSyB7X6OVYJuJFqcvvFrGPD643IHcuYSHN9U",
+        authDomain: "fistakip-c67ac.firebaseapp.com",
+        databaseURL: "https://fistakip-c67ac-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "fistakip-c67ac",
+        storageBucket: "fistakip-c67ac.firebasestorage.app",
+        messagingSenderId: "493351472822",
+        appId: "1:493351472822:web:91b18f178deea1d7b3a017",
+        measurementId: "G-HSS9R1B3RT"
+    };
+
+    // Firebase'i Başlat
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const dbRef = ref(db, 'fisler'); 
+
+    // HTML Elementleri
+    const btnEkle = document.getElementById('ekleBtn');
+    const listeElementi = document.getElementById('fisListesi');
+
+    // 1. VERİ EKLEME
+    btnEkle.addEventListener('click', () => {
+        const kurum = document.getElementById('kurumAdi').value;
+        const ucret = document.getElementById('ucret').value;
+        const tarih = document.getElementById('tarih').value;
+
+        if (kurum === "" || ucret === "" || tarih === "") {
+            alert("Lütfen tüm alanları doldurun!");
+            return;
+        }
+
+        push(dbRef, {
+            kurum: kurum,
+            ucret: ucret,
+            tarih: tarih
+        });
+
+        // Kutuları temizle
+        document.getElementById('kurumAdi').value = "";
+        document.getElementById('ucret').value = "";
+        document.getElementById('tarih').value = "";
+    });
+
+    // 2. VERİ OKUMA VE LİSTELEME
+    onValue(dbRef, (snapshot) => {
+        listeElementi.innerHTML = ""; 
+        const data = snapshot.val();
+
+        if (!data) {
+            listeElementi.innerHTML = "<li style='text-align:center; color:#999;'>Henüz fiş eklenmedi.</li>";
+            return;
+        }
+
+        // Verileri listeye dök
+        Object.keys(data).forEach(key => {
+            const fis = data[key];
+            const li = document.createElement('li');
+            li.className = 'fis-item';
+
+            li.innerHTML = `
+                <span class="fis-info">
+                    ${fis.tarih} - ${fis.kurum} <br>
+                    <small style="color:#555">(${fis.ucret} TL)</small>
+                </span>
+                <div class="actions">
+                    <input type="checkbox" class="custom-checkbox" 
+                           data-kurum="${fis.kurum}" 
+                           data-ucret="${fis.ucret}" 
+                           data-tarih="${fis.tarih}">
+                    
+                    <button class="btn-delete" id="${key}">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </div>
+            `;
+            listeElementi.appendChild(li);
+
+            // Silme işlemi
+            document.getElementById(key).addEventListener('click', function() {
+                if(confirm("Bu fişi silmek istediğine emin misin?")) {
+                    const silinecekRef = ref(db, 'fisler/' + key);
+                    remove(silinecekRef);
+                }
+            });
+        });
+    });
+
+</script>
+
+<script>
+    // 3. EXCEL İNDİRME
+    function excelIndir() {
+        const seciliCheckboxlar = document.querySelectorAll('.custom-checkbox:checked');
+        
+        if (seciliCheckboxlar.length === 0) {
+            alert("Lütfen indirmek için en az bir fiş seçin.");
+            return;
+        }
+
+        const excelDatasi = Array.from(seciliCheckboxlar).map(cb => ({
+            "Kurum Adı": cb.getAttribute('data-kurum'),
+            "Ödenen Ücret": cb.getAttribute('data-ucret'),
+            "Tarih": cb.getAttribute('data-tarih')
+        }));
+
+        const worksheet = XLSX.utils.json_to_sheet(excelDatasi);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Secili Fisler");
+        XLSX.writeFile(workbook, "Fis_Listesi.xlsx");
+    }
+</script>
+
+</body>
+</html>
