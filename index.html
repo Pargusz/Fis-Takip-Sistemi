@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ortak Fiş Takip Sistemi</title>
+    <title>Fatura ve Kasa Takip</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     
@@ -49,13 +49,14 @@
         }
 
         label {
-            font-size: 16px;
+            font-size: 15px;
             margin-bottom: 5px;
             color: #333;
             font-weight: 600;
         }
 
-        input {
+        /* DÜZELTME: Sadece metin girişleri ve select için stil uyguluyoruz. Checkbox etkilenmiyor. */
+        input:not([type="checkbox"]), select {
             background-color: #f0f0f0; 
             color: #333; 
             border: 1px solid #ccc;
@@ -67,9 +68,18 @@
             width: 100%;
             box-sizing: border-box;
             transition: 0.3s;
+            appearance: none; /* Sadece input ve select için */
         }
 
-        input:focus {
+        select {
+            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23333%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+            background-repeat: no-repeat;
+            background-position: right 15px top 50%;
+            background-size: 12px auto;
+            cursor: pointer;
+        }
+
+        input:not([type="checkbox"]):focus, select:focus {
             background-color: #fff;
             border-color: #5a4b81;
             box-shadow: 0 0 5px rgba(90, 75, 129, 0.3);
@@ -77,7 +87,7 @@
 
         .btn-submit {
             display: block;
-            margin: 20px auto 40px auto;
+            margin: 25px auto 40px auto;
             background-color: #5a4b81;
             color: white;
             padding: 15px 50px;
@@ -107,6 +117,39 @@
             min-width: 300px;
         }
 
+        .list-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 10px;
+        }
+
+        .list-header h2 {
+            margin: 0;
+            font-size: 20px;
+            color: #333;
+        }
+
+        .btn-select-all {
+            background-color: #7f8c8d;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .btn-select-all:hover {
+            background-color: #5a4b81;
+        }
+
         #fisListesi {
             list-style: none;
             padding: 0;
@@ -131,26 +174,33 @@
             font-weight: 600; 
             margin-right: 10px;
             word-break: break-word;
-            line-height: 1.4;
+            line-height: 1.5;
         }
 
-        .fis-info small {
-            color: #7f8c8d; 
-            font-weight: normal;
+        .badge-payment {
+            font-size: 12px;
+            background-color: #e0e0e0;
+            padding: 2px 8px;
+            border-radius: 10px;
+            color: #555;
+            margin-right: 5px;
+            vertical-align: middle;
         }
 
-        /* Sağ Taraf Kontrolleri */
         .actions {
             display: flex;
             align-items: center;
             gap: 15px;
         }
 
+        /* Checkbox Düzeltmesi */
         .custom-checkbox {
             width: 25px;
             height: 25px;
             cursor: pointer;
             accent-color: #27ae60;
+            /* Bu satır çok önemli, checkbox'ın görünür olmasını sağlar */
+            appearance: auto !important; 
         }
 
         .btn-delete {
@@ -204,16 +254,34 @@
         </div>
     </div>
 
-    <div class="input-wrapper" style="margin: 0 auto;">
-        <label>tarih</label>
-        <input type="date" id="tarih">
+    <div class="input-group">
+        <div class="input-wrapper">
+            <label>tarih</label>
+            <input type="date" id="tarih">
+        </div>
+        
+        <div class="input-wrapper">
+            <label>ödeme yöntemi</label>
+            <select id="odemeYontemi">
+                <option value="TEB">TEB</option>
+                <option value="Garanti">Garanti</option>
+                <option value="Nakit Kasa">Nakit Kasa</option>
+            </select>
+        </div>
     </div>
 
     <button class="btn-submit" id="ekleBtn">Listeye Kaydet</button>
 
     <div class="bottom-section">
         <div class="list-area">
-            <h2>Tüm Fişler:</h2>
+            
+            <div class="list-header">
+                <h2>Tüm Fişler:</h2>
+                <button class="btn-select-all" id="btnTumunuSec" onclick="tumunuSecIslemi()">
+                    <i class="fa-solid fa-check-double"></i> Tümünü Seç
+                </button>
+            </div>
+
             <ul id="fisListesi">
                 <li style="text-align:center; color:#999;">Veriler yükleniyor...</li>
             </ul>
@@ -228,7 +296,6 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-    // PAYLAŞTIĞIN FIREBASE BİLGİLERİ
     const firebaseConfig = {
         apiKey: "AIzaSyB7X6OVYJuJFqcvvFrGPD643IHcuYSHN9U",
         authDomain: "fistakip-c67ac.firebaseapp.com",
@@ -252,6 +319,7 @@
         const kurum = document.getElementById('kurumAdi').value;
         const ucret = document.getElementById('ucret').value;
         const tarih = document.getElementById('tarih').value;
+        const odeme = document.getElementById('odemeYontemi').value;
 
         if (kurum === "" || ucret === "" || tarih === "") {
             alert("Lütfen tüm alanları doldurun!");
@@ -261,7 +329,8 @@
         push(dbRef, {
             kurum: kurum,
             ucret: parseFloat(ucret),
-            tarih: tarih
+            tarih: tarih,
+            odeme: odeme
         });
 
         document.getElementById('kurumAdi').value = "";
@@ -284,19 +353,20 @@
             const li = document.createElement('li');
             li.className = 'fis-item';
 
-            // Tarih Formatı (DD.MM.YYYY)
             let gosterilenTarih = fis.tarih.split('-').reverse().join('.');
+            const odemeYontemi = fis.odeme ? fis.odeme : "TEB";
 
             li.innerHTML = `
                 <span class="fis-info">
-                    ${gosterilenTarih} - ${fis.kurum} <br>
-                    <small>(${fis.ucret} TL)</small>
+                    ${gosterilenTarih} <span class="badge-payment">${odemeYontemi}</span> ${fis.kurum} <br>
+                    <small style="color:#555">(${fis.ucret} TL)</small>
                 </span>
                 <div class="actions">
                     <input type="checkbox" class="custom-checkbox" 
                            data-kurum="${fis.kurum}" 
                            data-ucret="${fis.ucret}" 
-                           data-tarih="${fis.tarih}">
+                           data-tarih="${fis.tarih}"
+                           data-odeme="${odemeYontemi}">
                     
                     <button class="btn-delete" id="${key}">
                         <i class="fa-solid fa-trash"></i>
@@ -316,7 +386,26 @@
 </script>
 
 <script>
-    // 3. GELİŞMİŞ EXCEL OLUŞTURMA VE İNDİRME
+    // 3. TÜMÜNÜ SEÇ / KALDIR FONKSİYONU
+    function tumunuSecIslemi() {
+        const checkboxlar = document.querySelectorAll('.custom-checkbox');
+        const btn = document.getElementById('btnTumunuSec');
+        
+        // Önce hepsi seçili mi kontrol et
+        const hepsiSeciliMi = Array.from(checkboxlar).every(cb => cb.checked);
+
+        if (hepsiSeciliMi) {
+            // Hepsi seçiliyse -> Hepsini KALDIR
+            checkboxlar.forEach(cb => cb.checked = false);
+            btn.innerHTML = '<i class="fa-solid fa-check-double"></i> Tümünü Seç';
+        } else {
+            // Değilse -> Hepsini SEÇ
+            checkboxlar.forEach(cb => cb.checked = true);
+            btn.innerHTML = '<i class="fa-regular fa-square-check"></i> Seçimi Kaldır';
+        }
+    }
+
+    // 4. EXCEL OLUŞTURMA
     function excelIndir() {
         const seciliCheckboxlar = document.querySelectorAll('.custom-checkbox:checked');
         
@@ -325,61 +414,49 @@
             return;
         }
 
-        // --- Verileri Analiz Et ---
         let genelToplamTutar = 0;
-        let tarihDetaylari = {}; // { "2023-12-14": { adet: 3, toplam: 500 } } gibi tutacak
-
+        let tarihDetaylari = {}; 
         const satirVerileri = [];
 
-        // Başlık Satırı
-        satirVerileri.push(["Tarih", "Kurum Adı", "Tutar (TL)"]);
+        satirVerileri.push(["Tarih", "Ödeme Yöntemi", "Kurum Adı", "Tutar (TL)"]);
 
         seciliCheckboxlar.forEach(cb => {
             const kurum = cb.getAttribute('data-kurum');
             const ucret = parseFloat(cb.getAttribute('data-ucret'));
-            const tarih = cb.getAttribute('data-tarih'); // YYYY-MM-DD formatında
+            const tarih = cb.getAttribute('data-tarih');
+            const odeme = cb.getAttribute('data-odeme');
 
-            // Genel Toplamı artır
             genelToplamTutar += ucret;
 
-            // Tarih Detaylarını Hesapla
             if (!tarihDetaylari[tarih]) {
                 tarihDetaylari[tarih] = { adet: 0, gunlukToplam: 0 };
             }
             tarihDetaylari[tarih].adet += 1;
             tarihDetaylari[tarih].gunlukToplam += ucret;
 
-            // Listeye ekle (Tarihi düzelt: DD.MM.YYYY)
             const duzgunTarih = tarih.split('-').reverse().join('.');
-            satirVerileri.push([duzgunTarih, kurum, ucret]);
+            satirVerileri.push([duzgunTarih, odeme, kurum, ucret]);
         });
 
-        // --- Excel Yapısını Oluştur ---
         const excelTablosu = [];
 
-        // 1. Bölüm: Genel Toplam
-        excelTablosu.push(["GENEL TOPLAM TUTAR:", genelToplamTutar + " TL"]);
-        excelTablosu.push([]); // Boş satır
+        excelTablosu.push(["GENEL TOPLAM:", genelToplamTutar + " TL"]);
+        excelTablosu.push([]); 
 
-        // 2. Bölüm: Ana Harcama Listesi
         satirVerileri.forEach(satir => excelTablosu.push(satir));
         
-        // Listenin altına tekrar toplam
         excelTablosu.push([]); 
-        excelTablosu.push(["TOPLAM:", "", genelToplamTutar + " TL"]);
+        excelTablosu.push(["", "", "TOPLAM:", genelToplamTutar + " TL"]);
         excelTablosu.push([]); 
         excelTablosu.push([]); 
 
-        // 3. Bölüm: GÜNLÜK İŞLEM RAPORU (Güncellenen Kısım)
         excelTablosu.push(["GÜNLÜK İŞLEM RAPORU"]);
-        // Yeni sütun başlığı eklendi: "Günlük Toplam"
         excelTablosu.push(["Tarih", "İşlem Sayısı", "Günlük Toplam"]);
 
         Object.keys(tarihDetaylari).sort().forEach(tarihKey => {
             const veri = tarihDetaylari[tarihKey];
             const duzgunTarih = tarihKey.split('-').reverse().join('.');
             
-            // Buraya yeni sütunu ekledik
             excelTablosu.push([
                 duzgunTarih, 
                 veri.adet + " adet işlem", 
@@ -387,21 +464,19 @@
             ]);
         });
 
-        // --- Dosyayı Oluştur ---
         const worksheet = XLSX.utils.aoa_to_sheet(excelTablosu);
         
-        // Sütun genişlikleri
         worksheet['!cols'] = [
-            { wch: 20 }, // A Sütunu 
-            { wch: 30 }, // B Sütunu
-            { wch: 20 }  // C Sütunu
+            { wch: 15 }, 
+            { wch: 15 }, 
+            { wch: 30 }, 
+            { wch: 15 } 
         ];
 
         const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Fis Raporu");
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Kasa Takip");
         
-        // İndir
-        XLSX.writeFile(workbook, "Detayli_Fis_Raporu.xlsx");
+        XLSX.writeFile(workbook, "Harcama_Raporu.xlsx");
     }
 </script>
 
