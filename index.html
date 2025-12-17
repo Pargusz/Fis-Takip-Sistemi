@@ -55,7 +55,7 @@
             font-weight: 600;
         }
 
-        /* DÜZELTME: Sadece metin girişleri ve select için stil uyguluyoruz. Checkbox etkilenmiyor. */
+        /* Input stilleri (Checkbox hariç) */
         input:not([type="checkbox"]), select {
             background-color: #f0f0f0; 
             color: #333; 
@@ -68,7 +68,7 @@
             width: 100%;
             box-sizing: border-box;
             transition: 0.3s;
-            appearance: none; /* Sadece input ve select için */
+            appearance: none;
         }
 
         select {
@@ -117,19 +117,41 @@
             min-width: 300px;
         }
 
+        /* Liste Başlık Alanı (Title, Search, SelectAll) */
         .list-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 10px;
+            margin-bottom: 15px;
             border-bottom: 2px solid #f0f0f0;
-            padding-bottom: 10px;
+            padding-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
         }
 
         .list-header h2 {
             margin: 0;
             font-size: 20px;
             color: #333;
+            white-space: nowrap;
+        }
+
+        /* Yeni Arama Kutusu Stili */
+        .search-date-input {
+            padding: 5px 15px !important; /* !important ile genel input stilini eziyoruz */
+            border-radius: 15px !important;
+            border: 1px solid #ddd !important;
+            font-size: 14px !important;
+            width: auto !important;
+            background-color: #fff !important;
+            color: #555 !important;
         }
 
         .btn-select-all {
@@ -193,13 +215,12 @@
             gap: 15px;
         }
 
-        /* Checkbox Düzeltmesi */
+        /* Checkbox Görünürlük Ayarı */
         .custom-checkbox {
             width: 25px;
             height: 25px;
             cursor: pointer;
             accent-color: #27ae60;
-            /* Bu satır çok önemli, checkbox'ın görünür olmasını sağlar */
             appearance: auto !important; 
         }
 
@@ -236,6 +257,9 @@
             .input-wrapper { max-width: 100%; }
             .bottom-section { flex-direction: column; align-items: stretch; }
             .btn-excel { width: 100%; margin-top: 10px; justify-content: center; }
+            .list-header { flex-direction: column; align-items: stretch; gap: 10px; }
+            .header-left { justify-content: space-between; width: 100%; }
+            .btn-select-all { justify-content: center; }
         }
     </style>
 </head>
@@ -276,7 +300,11 @@
         <div class="list-area">
             
             <div class="list-header">
-                <h2>Tüm Fişler:</h2>
+                <div class="header-left">
+                    <h2>Tüm Fişler:</h2>
+                    <input type="date" id="tarihFiltre" class="search-date-input" title="Tarihe Göre Ara">
+                </div>
+                
                 <button class="btn-select-all" id="btnTumunuSec" onclick="tumunuSecIslemi()">
                     <i class="fa-solid fa-check-double"></i> Tümünü Seç
                 </button>
@@ -311,8 +339,11 @@
     const db = getDatabase(app);
     const dbRef = ref(db, 'fisler'); 
 
+    // Global değişkenler (Filtreleme için veriyi hafızada tutacağız)
+    let tumVeriler = {}; 
+
     const btnEkle = document.getElementById('ekleBtn');
-    const listeElementi = document.getElementById('fisListesi');
+    const tarihFiltre = document.getElementById('tarihFiltre');
 
     // 1. VERİ EKLEME
     btnEkle.addEventListener('click', () => {
@@ -338,74 +369,106 @@
         document.getElementById('tarih').value = "";
     });
 
-    // 2. VERİ OKUMA VE LİSTELEME
+    // 2. VERİ OKUMA (Realtime)
     onValue(dbRef, (snapshot) => {
-        listeElementi.innerHTML = ""; 
-        const data = snapshot.val();
+        tumVeriler = snapshot.val() || {}; // Veriyi global değişkene kaydet
+        listeyiRenderEt(); // Listeyi çiz
+    });
 
-        if (!data) {
+    // 3. FİLTRELEME OLAYI
+    tarihFiltre.addEventListener('change', listeyiRenderEt);
+
+    // 4. LİSTEYİ EKRA ÇİZME FONKSİYONU (Filtreye göre)
+    function listeyiRenderEt() {
+        const listeElementi = document.getElementById('fisListesi');
+        const secilenTarih = tarihFiltre.value; // Filtre kutusundaki tarih
+
+        listeElementi.innerHTML = ""; 
+        
+        if (Object.keys(tumVeriler).length === 0) {
             listeElementi.innerHTML = "<li style='text-align:center; color:#999;'>Henüz fiş eklenmedi.</li>";
             return;
         }
 
-        Object.keys(data).forEach(key => {
-            const fis = data[key];
-            const li = document.createElement('li');
-            li.className = 'fis-item';
+        let veriBulundu = false;
 
-            let gosterilenTarih = fis.tarih.split('-').reverse().join('.');
-            const odemeYontemi = fis.odeme ? fis.odeme : "TEB";
+        Object.keys(tumVeriler).forEach(key => {
+            const fis = tumVeriler[key];
 
-            li.innerHTML = `
-                <span class="fis-info">
-                    ${gosterilenTarih} <span class="badge-payment">${odemeYontemi}</span> ${fis.kurum} <br>
-                    <small style="color:#555">(${fis.ucret} TL)</small>
-                </span>
-                <div class="actions">
-                    <input type="checkbox" class="custom-checkbox" 
-                           data-kurum="${fis.kurum}" 
-                           data-ucret="${fis.ucret}" 
-                           data-tarih="${fis.tarih}"
-                           data-odeme="${odemeYontemi}">
-                    
-                    <button class="btn-delete" id="${key}">
-                        <i class="fa-solid fa-trash"></i>
-                    </button>
-                </div>
-            `;
-            listeElementi.appendChild(li);
+            // FİLTRELEME MANTIĞI:
+            // Eğer tarih seçilmemişse HEPSİNİ göster
+            // VEYA tarih seçilmişse ve fişin tarihi uyuyorsa göster
+            if (!secilenTarih || fis.tarih === secilenTarih) {
+                
+                veriBulundu = true;
+                const li = document.createElement('li');
+                li.className = 'fis-item';
 
-            document.getElementById(key).addEventListener('click', function() {
+                let gosterilenTarih = fis.tarih.split('-').reverse().join('.');
+                const odemeYontemi = fis.odeme ? fis.odeme : "TEB";
+
+                li.innerHTML = `
+                    <span class="fis-info">
+                        ${gosterilenTarih} <span class="badge-payment">${odemeYontemi}</span> ${fis.kurum} <br>
+                        <small style="color:#555">(${fis.ucret} TL)</small>
+                    </span>
+                    <div class="actions">
+                        <input type="checkbox" class="custom-checkbox" 
+                            data-kurum="${fis.kurum}" 
+                            data-ucret="${fis.ucret}" 
+                            data-tarih="${fis.tarih}"
+                            data-odeme="${odemeYontemi}">
+                        
+                        <button class="btn-delete" data-key="${key}">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                `;
+                listeElementi.appendChild(li);
+            }
+        });
+
+        if (!veriBulundu) {
+            listeElementi.innerHTML = "<li style='text-align:center; color:#999;'>Bu tarihte kayıt bulunamadı.</li>";
+        }
+
+        // Silme butonlarına olay ekle
+        document.querySelectorAll('.btn-delete').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const key = this.getAttribute('data-key');
                 if(confirm("Bu fişi silmek istediğine emin misin?")) {
                     const silinecekRef = ref(db, 'fisler/' + key);
                     remove(silinecekRef);
                 }
             });
         });
-    });
+    }
+
+    // Fonksiyonları global scope'a taşı (HTML onclick çalışsın diye)
+    window.listeyiRenderEt = listeyiRenderEt;
 </script>
 
 <script>
-    // 3. TÜMÜNÜ SEÇ / KALDIR FONKSİYONU
+    // JS FONKSİYONLARI
+
+    // Tümünü Seç / Kaldır
     function tumunuSecIslemi() {
         const checkboxlar = document.querySelectorAll('.custom-checkbox');
+        if (checkboxlar.length === 0) return;
+
         const btn = document.getElementById('btnTumunuSec');
-        
-        // Önce hepsi seçili mi kontrol et
         const hepsiSeciliMi = Array.from(checkboxlar).every(cb => cb.checked);
 
         if (hepsiSeciliMi) {
-            // Hepsi seçiliyse -> Hepsini KALDIR
             checkboxlar.forEach(cb => cb.checked = false);
             btn.innerHTML = '<i class="fa-solid fa-check-double"></i> Tümünü Seç';
         } else {
-            // Değilse -> Hepsini SEÇ
             checkboxlar.forEach(cb => cb.checked = true);
             btn.innerHTML = '<i class="fa-regular fa-square-check"></i> Seçimi Kaldır';
         }
     }
 
-    // 4. EXCEL OLUŞTURMA
+    // Excel İndir
     function excelIndir() {
         const seciliCheckboxlar = document.querySelectorAll('.custom-checkbox:checked');
         
@@ -439,7 +502,6 @@
         });
 
         const excelTablosu = [];
-
         excelTablosu.push(["GENEL TOPLAM:", genelToplamTutar + " TL"]);
         excelTablosu.push([]); 
 
@@ -465,17 +527,10 @@
         });
 
         const worksheet = XLSX.utils.aoa_to_sheet(excelTablosu);
-        
-        worksheet['!cols'] = [
-            { wch: 15 }, 
-            { wch: 15 }, 
-            { wch: 30 }, 
-            { wch: 15 } 
-        ];
+        worksheet['!cols'] = [{ wch: 15 }, { wch: 15 }, { wch: 30 }, { wch: 15 }];
 
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Kasa Takip");
-        
         XLSX.writeFile(workbook, "Harcama_Raporu.xlsx");
     }
 </script>
