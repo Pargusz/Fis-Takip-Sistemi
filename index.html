@@ -56,9 +56,9 @@
         }
 
         input {
-            background-color: #999;
-            color: white;
-            border: none;
+            background-color: #f0f0f0; 
+            color: #333; 
+            border: 1px solid #ccc;
             padding: 15px;
             border-radius: 30px;
             font-size: 16px;
@@ -69,8 +69,11 @@
             transition: 0.3s;
         }
 
-        input::placeholder { color: #ddd; }
-        input:focus { background-color: #777; }
+        input:focus {
+            background-color: #fff;
+            border-color: #5a4b81;
+            box-shadow: 0 0 5px rgba(90, 75, 129, 0.3);
+        }
 
         .btn-submit {
             display: block;
@@ -117,17 +120,23 @@
             justify-content: space-between;
             padding: 15px;
             margin-bottom: 10px;
-            border-bottom: 2px solid #eee;
-            background-color: #fff;
+            border-bottom: 1px solid #e0e0e0;
+            background-color: #fafafa;
+            border-radius: 8px;
         }
 
         .fis-info {
-            font-size: 15px;
-            color: #c0392b;
-            font-weight: bold;
-            font-family: 'Comic Sans MS', cursive, sans-serif;
+            font-size: 16px;
+            color: #2c3e50; 
+            font-weight: 600; 
             margin-right: 10px;
             word-break: break-word;
+            line-height: 1.4;
+        }
+
+        .fis-info small {
+            color: #7f8c8d; 
+            font-weight: normal;
         }
 
         /* Sağ Taraf Kontrolleri */
@@ -164,15 +173,19 @@
             cursor: pointer;
             font-size: 16px;
             white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
+        
+        .btn-excel:hover { background-color: #219150; }
 
-        /* Mobil Uyumluluk */
         @media (max-width: 768px) {
             .container { padding: 20px; margin-top: 20px; }
             .input-group { flex-direction: column; align-items: center; }
             .input-wrapper { max-width: 100%; }
             .bottom-section { flex-direction: column; align-items: stretch; }
-            .btn-excel { width: 100%; margin-top: 10px; }
+            .btn-excel { width: 100%; margin-top: 10px; justify-content: center; }
         }
     </style>
 </head>
@@ -205,16 +218,17 @@
                 <li style="text-align:center; color:#999;">Veriler yükleniyor...</li>
             </ul>
         </div>
-        <button class="btn-excel" onclick="excelIndir()">Seçilenleri Excel İndir</button>
+        <button class="btn-excel" onclick="excelIndir()">
+            <i class="fa-solid fa-file-excel"></i> Seçilenleri Excel İndir
+        </button>
     </div>
 </div>
 
 <script type="module">
-    // Web uyumlu importlar
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-    // SENİN GÖNDERDİĞİN CONFİG BİLGİLERİ
+    // PAYLAŞTIĞIN FIREBASE BİLGİLERİ
     const firebaseConfig = {
         apiKey: "AIzaSyB7X6OVYJuJFqcvvFrGPD643IHcuYSHN9U",
         authDomain: "fistakip-c67ac.firebaseapp.com",
@@ -226,12 +240,10 @@
         measurementId: "G-HSS9R1B3RT"
     };
 
-    // Firebase'i Başlat
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
     const dbRef = ref(db, 'fisler'); 
 
-    // HTML Elementleri
     const btnEkle = document.getElementById('ekleBtn');
     const listeElementi = document.getElementById('fisListesi');
 
@@ -248,11 +260,10 @@
 
         push(dbRef, {
             kurum: kurum,
-            ucret: ucret,
+            ucret: parseFloat(ucret),
             tarih: tarih
         });
 
-        // Kutuları temizle
         document.getElementById('kurumAdi').value = "";
         document.getElementById('ucret').value = "";
         document.getElementById('tarih').value = "";
@@ -268,16 +279,18 @@
             return;
         }
 
-        // Verileri listeye dök
         Object.keys(data).forEach(key => {
             const fis = data[key];
             const li = document.createElement('li');
             li.className = 'fis-item';
 
+            // Tarih Formatı (DD.MM.YYYY)
+            let gosterilenTarih = fis.tarih.split('-').reverse().join('.');
+
             li.innerHTML = `
                 <span class="fis-info">
-                    ${fis.tarih} - ${fis.kurum} <br>
-                    <small style="color:#555">(${fis.ucret} TL)</small>
+                    ${gosterilenTarih} - ${fis.kurum} <br>
+                    <small>(${fis.ucret} TL)</small>
                 </span>
                 <div class="actions">
                     <input type="checkbox" class="custom-checkbox" 
@@ -292,7 +305,6 @@
             `;
             listeElementi.appendChild(li);
 
-            // Silme işlemi
             document.getElementById(key).addEventListener('click', function() {
                 if(confirm("Bu fişi silmek istediğine emin misin?")) {
                     const silinecekRef = ref(db, 'fisler/' + key);
@@ -301,11 +313,10 @@
             });
         });
     });
-
 </script>
 
 <script>
-    // 3. EXCEL İNDİRME
+    // 3. GELİŞMİŞ EXCEL OLUŞTURMA VE İNDİRME
     function excelIndir() {
         const seciliCheckboxlar = document.querySelectorAll('.custom-checkbox:checked');
         
@@ -314,16 +325,83 @@
             return;
         }
 
-        const excelDatasi = Array.from(seciliCheckboxlar).map(cb => ({
-            "Kurum Adı": cb.getAttribute('data-kurum'),
-            "Ödenen Ücret": cb.getAttribute('data-ucret'),
-            "Tarih": cb.getAttribute('data-tarih')
-        }));
+        // --- Verileri Analiz Et ---
+        let genelToplamTutar = 0;
+        let tarihDetaylari = {}; // { "2023-12-14": { adet: 3, toplam: 500 } } gibi tutacak
 
-        const worksheet = XLSX.utils.json_to_sheet(excelDatasi);
+        const satirVerileri = [];
+
+        // Başlık Satırı
+        satirVerileri.push(["Tarih", "Kurum Adı", "Tutar (TL)"]);
+
+        seciliCheckboxlar.forEach(cb => {
+            const kurum = cb.getAttribute('data-kurum');
+            const ucret = parseFloat(cb.getAttribute('data-ucret'));
+            const tarih = cb.getAttribute('data-tarih'); // YYYY-MM-DD formatında
+
+            // Genel Toplamı artır
+            genelToplamTutar += ucret;
+
+            // Tarih Detaylarını Hesapla
+            if (!tarihDetaylari[tarih]) {
+                tarihDetaylari[tarih] = { adet: 0, gunlukToplam: 0 };
+            }
+            tarihDetaylari[tarih].adet += 1;
+            tarihDetaylari[tarih].gunlukToplam += ucret;
+
+            // Listeye ekle (Tarihi düzelt: DD.MM.YYYY)
+            const duzgunTarih = tarih.split('-').reverse().join('.');
+            satirVerileri.push([duzgunTarih, kurum, ucret]);
+        });
+
+        // --- Excel Yapısını Oluştur ---
+        const excelTablosu = [];
+
+        // 1. Bölüm: Genel Toplam
+        excelTablosu.push(["GENEL TOPLAM TUTAR:", genelToplamTutar + " TL"]);
+        excelTablosu.push([]); // Boş satır
+
+        // 2. Bölüm: Ana Harcama Listesi
+        satirVerileri.forEach(satir => excelTablosu.push(satir));
+        
+        // Listenin altına tekrar toplam
+        excelTablosu.push([]); 
+        excelTablosu.push(["TOPLAM:", "", genelToplamTutar + " TL"]);
+        excelTablosu.push([]); 
+        excelTablosu.push([]); 
+
+        // 3. Bölüm: GÜNLÜK İŞLEM RAPORU (Güncellenen Kısım)
+        excelTablosu.push(["GÜNLÜK İŞLEM RAPORU"]);
+        // Yeni sütun başlığı eklendi: "Günlük Toplam"
+        excelTablosu.push(["Tarih", "İşlem Sayısı", "Günlük Toplam"]);
+
+        Object.keys(tarihDetaylari).sort().forEach(tarihKey => {
+            const veri = tarihDetaylari[tarihKey];
+            const duzgunTarih = tarihKey.split('-').reverse().join('.');
+            
+            // Buraya yeni sütunu ekledik
+            excelTablosu.push([
+                duzgunTarih, 
+                veri.adet + " adet işlem", 
+                veri.gunlukToplam + " TL"
+            ]);
+        });
+
+        // --- Dosyayı Oluştur ---
+        const worksheet = XLSX.utils.aoa_to_sheet(excelTablosu);
+        
+        // Sütun genişlikleri
+        worksheet['!cols'] = [
+            { wch: 20 }, // A Sütunu 
+            { wch: 30 }, // B Sütunu
+            { wch: 20 }  // C Sütunu
+        ];
+
         const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Secili Fisler");
-        XLSX.writeFile(workbook, "Fis_Listesi.xlsx");
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Fis Raporu");
+        
+        // İndir
+        XLSX.writeFile(workbook, "Detayli_Fis_Raporu.xlsx");
     }
 </script>
 
